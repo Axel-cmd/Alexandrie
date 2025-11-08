@@ -93,7 +93,7 @@ kbd {
 }
 
 // Mobile styles
-@media screen and (width <= 719px) {
+@media screen and (width <= $breakpoint-mobile) {
   .no-mobile {
     display: none;
   }

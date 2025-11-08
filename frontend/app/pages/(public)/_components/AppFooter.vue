@@ -16,7 +16,7 @@ footer {
   justify-content: space-between;
 }
 
-@media (width <= 768px) {
+@media (width <= $breakpoint-mobile) {
   footer {
     margin: 0;
     padding: 2rem 1rem;

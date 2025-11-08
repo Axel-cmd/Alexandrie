@@ -314,7 +314,7 @@ watch(searchQuery, () => (selectedIndex.value = 0));
   gap: 10px;
 }
 
-@media (width <= 768px) {
+@media (width <= $breakpoint-mobile) {
   .command-center-modal {
     width: 95%;
     max-height: 80vh;

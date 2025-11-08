@@ -11,7 +11,7 @@ const marginLeft = computed(() => (isMobile() || !isOpened.value ? '10px' : `${p
 const transition = computed(() => (isResizing.value ? 'none' : 'padding-left 0.3s'));
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .medium-view {
   width: 100%;
   height: 100%;
@@ -25,7 +25,7 @@ const transition = computed(() => (isResizing.value ? 'none' : 'padding-left 0.3
   }
 }
 
-@media screen and (width <= 719px) {
+@media screen and (width <= $breakpoint-mobile) {
   .medium-view {
     padding: 0 0.5rem;
   }

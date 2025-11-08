@@ -70,7 +70,7 @@ watchEffect(async () => {
   grid-column: 2;
 }
 
-@media screen and (width >= 810px) {
+@media screen and (width >= $breakpoint-tablet) {
   .doc-container {
     max-width: 800px;
     padding: 0 2rem;
@@ -86,7 +86,7 @@ watchEffect(async () => {
   justify-self: start;
 }
 
-@media screen and (width <= 1280px) {
+@media screen and (width <= $breakpoint-large-desktop) {
   .toc {
     display: none;
   }

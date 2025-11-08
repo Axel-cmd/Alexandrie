@@ -458,7 +458,7 @@ onMounted(() => {
   }
 }
 
-@media (width <= 768px) {
+@media (width <= $breakpoint-mobile) {
   .modal-ctn {
     padding: 0 16px;
   }

@@ -1,4 +1,5 @@
 import type { PublicUser, User } from '~/stores/db_strustures';
+import { BREAKPOINT_MOBILE, BREAKPOINT_LARGE_DESKTOP } from './constants';
 
 export function useApi() {
   const config = useRuntimeConfig();
@@ -7,9 +8,9 @@ export function useApi() {
   return { CDN, API };
 }
 // Little screen size
-export const isMobile = () => (import.meta.client ? window.innerWidth <= 768 : false);
+export const isMobile = () => (import.meta.client ? window.innerWidth <= BREAKPOINT_MOBILE : false);
 // Intermediate screen size
-export const isTablet = () => (import.meta.client ? window.innerWidth <= 1280 : false);
+export const isTablet = () => (import.meta.client ? window.innerWidth <= BREAKPOINT_LARGE_DESKTOP : false);
 
 export function useAvatar(user?: User | PublicUser | null): string {
   const { CDN } = useApi();

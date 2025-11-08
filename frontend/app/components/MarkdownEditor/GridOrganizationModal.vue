@@ -422,7 +422,7 @@ const closeModal = () => {
   }
 }
 
-@media (width <= 768px) {
+@media (width <= $breakpoint-mobile) {
   .table-grid {
     max-width: 300px;
     gap: 1px;

@@ -51,7 +51,7 @@ function deleteNode(node: Item) {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .workspace {
   display: block;
   width: 100%;
@@ -67,7 +67,7 @@ function deleteNode(node: Item) {
   font-weight: bold;
 }
 
-@media screen and (width <= 768px) {
+@media screen and (width <= $breakpoint-mobile) {
   header {
     flex-direction: column;
   }

@@ -165,7 +165,7 @@ function onLeave(el: Element) {
   max-height: 0;
 }
 
-@media (min-width: 768px) {
+@media (min-width: $breakpoint-mobile) {
   .accordion-title {
     font-size: 1.1rem;
   }

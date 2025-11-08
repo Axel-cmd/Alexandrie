@@ -72,10 +72,9 @@ watchEffect(() => {
 <style lang="scss" scoped>
 .breadcrumb {
   display: flex;
-  padding: 3px;
+  // padding: 3px;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
 
   svg {
     width: 27px;
@@ -84,7 +83,7 @@ watchEffect(() => {
     transition: all 0.3s ease;
     cursor: pointer;
     fill: var(--font-color);
-    margin-right: 8px;
+    margin-right: 1px;
 
     &:hover:not(.disabled) {
       background-color: var(--selection-color);
@@ -113,7 +112,7 @@ watchEffect(() => {
   a {
     padding: 4px 8px;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 500;
     color: var(--font-color);
     text-decoration: none;

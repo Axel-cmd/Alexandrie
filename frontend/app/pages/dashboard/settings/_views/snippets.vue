@@ -318,7 +318,7 @@ watch(searchQuery, () => {
   flex: 1;
   gap: 1rem;
 
-  @media (width <= 768px) {
+  @media (width <= $breakpoint-mobile) {
     align-items: stretch;
     flex-direction: column;
   }
@@ -329,7 +329,7 @@ watch(searchQuery, () => {
   max-width: 400px;
   flex: 1;
 
-  @media (width <= 768px) {
+  @media (width <= $breakpoint-mobile) {
     max-width: none;
   }
 }
@@ -396,7 +396,7 @@ watch(searchQuery, () => {
   gap: 0.5rem;
   grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
 
-  @media (width <= 768px) {
+  @media (width <= $breakpoint-mobile) {
     gap: 1rem;
     grid-template-columns: 1fr;
   }

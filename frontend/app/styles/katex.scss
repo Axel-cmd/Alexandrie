@@ -1,3 +1,5 @@
+@use './_variables.scss' as *;
+
 .katex-container {
 	display: inline-flex;
 	max-width: 100%;
@@ -15,7 +17,7 @@
 	//text-align: left;
 }
 
-@media screen and (width >=1000px) {
+@media screen and (width >= $breakpoint-desktop) {
 	.katex-display>.katex {
 		text-align: left !important;
 		white-space: wrap !important;

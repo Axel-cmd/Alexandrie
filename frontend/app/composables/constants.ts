@@ -39,3 +39,22 @@ export const NODE_PERMISSIONS = [
   { label: 'Editor', id: 2 },
   { label: 'Admin', id: 3 },
 ];
+
+/**
+ * Responsive breakpoints (in pixels)
+ * Used for JavaScript/TypeScript logic
+ */
+export const BREAKPOINTS = {
+  MOBILE: 768,
+  TABLET: 810,
+  DESKTOP: 1000,
+  LARGE_DESKTOP: 1280,
+} as const;
+
+/**
+ * Breakpoint values as numbers for direct comparison
+ */
+export const BREAKPOINT_MOBILE = BREAKPOINTS.MOBILE;
+export const BREAKPOINT_TABLET = BREAKPOINTS.TABLET;
+export const BREAKPOINT_DESKTOP = BREAKPOINTS.DESKTOP;
+export const BREAKPOINT_LARGE_DESKTOP = BREAKPOINTS.LARGE_DESKTOP;

@@ -116,7 +116,7 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-@media screen and (width >= 810px) {
+@media screen and (width >= $breakpoint-tablet) {
   .doc-container {
     padding: 0 2rem;
   }
@@ -126,7 +126,7 @@ onMounted(() => {
   position: relative;
 }
 
-@media screen and (width <= 1280px) {
+@media screen and (width <= $breakpoint-large-desktop) {
   .toc {
     display: none;
   }

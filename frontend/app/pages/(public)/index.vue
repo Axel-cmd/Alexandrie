@@ -234,7 +234,7 @@ main {
   transform: translateY(0);
 }
 
-@media screen and (width <= 768px) {
+@media screen and (width <= $breakpoint-mobile) {
   main {
     padding: 0 1rem;
   }

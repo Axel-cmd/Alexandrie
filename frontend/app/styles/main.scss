@@ -75,7 +75,7 @@ body.modal-open {
 
 
 
-@media screen and (width >=768px) {
+@media screen and (width >= $breakpoint-mobile) {
 	.card-component {
 		padding: 2rem;
 	}

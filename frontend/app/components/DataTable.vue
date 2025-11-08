@@ -259,7 +259,7 @@ input {
   color: var(--font-color-dark);
 }
 
-@media screen and (width >= 1000px) {
+@media screen and (width >= $breakpoint-desktop) {
   .container {
     zoom: 1;
   }
@@ -269,7 +269,7 @@ input {
   }
 }
 
-@media screen and (width <= 768px) {
+@media screen and (width <= $breakpoint-mobile) {
   table {
     table-layout: fixed;
   }
