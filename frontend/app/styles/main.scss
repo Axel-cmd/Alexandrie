@@ -67,6 +67,10 @@ body {
 body.modal-open {
 	overflow: hidden;
 	touch-action: none;
+	user-select: none;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
 }
 
 :root {
@@ -93,6 +97,7 @@ form {
 }
 
 @media print {
+
 	header,
 	footer,
 	nav,
@@ -113,6 +118,20 @@ form {
 	}
 
 	.no-print {
+		display: none !important;
+	}
+}
+
+// TABLET \\
+@media screen and (width <=1023px) {
+	.no-tablet {
+		display: none;
+	}
+}
+
+// MOBILE \\
+@media screen and (width <=719px) {
+	.no-mobile {
 		display: none !important;
 	}
 }

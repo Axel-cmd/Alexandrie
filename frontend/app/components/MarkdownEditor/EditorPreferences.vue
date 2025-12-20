@@ -1,4 +1,3 @@
-<!-- This components is a modal for advanced editing document metadata -->
 <template>
   <div class="modal-content">
     <h2>Editor preferences</h2>
@@ -7,6 +6,19 @@
       <AppSelect v-model="store.get('editorFontFamily').value" :items="EDITOR_FONTS" placeholder="Select theme" />
       <label for="category">Font size</label>
       <input v-model="store.get('editorFontSize').value" type="number" min="1" max="100" placeholder="Select font size" />
+      <div class="row">
+        <label for="category">Spell check</label>
+        <AppToggle v-model="store.get('editorSpellCheck').value" />
+      </div>
+      <tag>Note: Enabling spell check can take effect after restarting the editor (reload the page)</tag>
+      <div class="row">
+        <label for="category">Display editor statistics</label>
+        <AppToggle v-model="store.get('editorDisplayStats').value" />
+      </div>
+      <div class="row">
+        <label for="category">Enable snippets</label>
+        <AppToggle v-model="store.get('editorSnippetsEnabled').value" />
+      </div>
     </form>
   </div>
 </template>
@@ -38,5 +50,12 @@ textarea {
   max-height: 50px;
   font-size: 14px;
   resize: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
 }
 </style>

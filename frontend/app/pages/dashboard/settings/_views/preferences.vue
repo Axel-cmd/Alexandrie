@@ -7,36 +7,44 @@
       <h3>{{ section.label }}</h3>
 
       <div v-for="opt in section.options" :key="opt.key" class="form-group">
-        <label>{{ opt.label }}</label>
+        <div>
+          <label
+            >{{ opt.label }} <tag v-if="opt.tag" class="blue">{{ opt.tag }}</tag></label
+          >
+
+          <p class="description">{{ opt.description }}</p>
+        </div>
         <!-- Toggle -->
-        <AppToggle v-if="opt.type === 'toggle'" v-model="prefs[opt.key]" class="entry" @update:model-value="opt.onChange?.(prefs[opt.key])" />
+        <AppToggle v-if="opt.type === 'toggle'" v-model="p(opt.key).value" class="entry" @update:model-value="opt.onChange?.(p(opt.key).value)" />
 
         <!-- Select -->
         <AppSelect
           v-else-if="opt.type === 'select'"
-          v-model="prefs[opt.key]"
+          v-model="p(opt.key).value"
           :items="opt.choices!"
           size="40%"
           class="entry"
-          @update:model-value="opt.onChange?.(prefs[opt.key])"
+          :searchable="false"
+          @update:model-value="opt.onChange?.(p(opt.key).value)"
         />
 
         <!-- Radio -->
         <AppRadio
           v-else-if="opt.type === 'radio'"
-          v-model="prefs[opt.key]"
+          v-model="p(opt.key).value"
           :items="opt.choices!"
           class="entry"
-          @update:model-value="opt.onChange?.(prefs[opt.key])"
+          @update:model-value="opt.onChange?.(p(opt.key).value)"
         />
 
         <!-- Color -->
-        <AppColorPicker v-else-if="opt.type === 'color'" v-model="prefs[opt.key]" class="entry" @update:model-value="opt.onChange?.(prefs[opt.key])" />
+        <AppColorPicker v-else-if="opt.type === 'color'" v-model="p(opt.key).value" class="entry" @update:model-value="opt.onChange?.(p(opt.key).value)" />
 
+        <!-- Group Checkbox -->
         <div v-else-if="opt.type === 'groupCheckbox'" class="group-checkbox">
           <div class="checkbox-grid">
-            <label v-for="(label, key) in opt.items" :key="key">
-              <AppCheck v-model="prefs[opt.key][key]" @change="opt.onChange?.(prefs[opt.key])">{{ label }}</AppCheck>
+            <label v-for="[key, label] of Object.entries(opt.items)" :key="key">
+              <AppCheck v-model="p(opt.key).value[key]" @change="opt.onChange?.(p(opt.key).value)">{{ label }}</AppCheck>
             </label>
           </div>
         </div>
@@ -56,18 +64,23 @@
 
 <script setup lang="ts">
 const preferencesStore = usePreferences();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const prefs: Record<string, any> = preferencesStore.all;
+// @ts-expect-error unknown type
+const p = preferencesStore.get as <K extends PreferenceKey>(key: K) => ReturnType<unknown>;
+
+type InterfaceOption = Option & {
+  tag?: string;
+};
+
 const colorMode = useColorMode();
-const options = ref<{ label: string; options: Option[] }[]>([
+const options: Array<{ label: string; options: InterfaceOption[] }> = [
   {
     label: 'General',
     options: [
       {
         label: 'Enable Dark Mode',
         type: 'toggle',
-        value: Boolean(preferencesStore.get('darkMode')),
         key: 'darkMode',
+        // @ts-expect-error -> specific type
         onChange: (option: boolean) => {
           colorMode.preference = option ? 'dark' : 'light';
           document.body.style.colorScheme = colorMode.preference;
@@ -77,7 +90,7 @@ const options = ref<{ label: string; options: Option[] }[]>([
         label: 'Choose primary color',
         type: 'color',
         key: 'primaryColor',
-        value: Number(preferencesStore.get('primaryColor')),
+        // @ts-expect-error -> specific type
         onChange: (option: number) => {
           setAppColor(option);
         },
@@ -87,21 +100,25 @@ const options = ref<{ label: string; options: Option[] }[]>([
   {
     label: 'Documents',
     options: [
-      { label: 'Enable Print Mode', type: 'toggle', key: 'printMode', value: Boolean(preferencesStore.get('printMode')) },
-      { label: 'Hide Table of Content', type: 'toggle', key: 'hideTOC', value: Boolean(preferencesStore.get('hideTOC')) },
-      { label: 'Enable Document Auto-save', type: 'toggle', key: 'documentAutoSave', value: Boolean(preferencesStore.get('documentAutoSave')) },
+      {
+        label: 'Enable Print Mode',
+        description: 'Simplify the header of printed documents (remove the thumbnail, tags, description and keep only the title)',
+        type: 'toggle',
+        key: 'printMode',
+      },
+      { label: 'Hide Table of Content', type: 'toggle', key: 'hideTOC' },
+      { label: 'Enable Document auto-save', type: 'toggle', key: 'documentAutoSave' },
       {
         label: 'Document size',
         type: 'radio',
         key: 'docSize',
-        value: Number(preferencesStore.get('docSize')),
         choices: DOCUMENT_SIZES,
       },
       {
         label: 'Theme',
+        description: 'Default theme used for documents. You can override it for each document individually.',
         type: 'select',
         key: 'theme',
-        value: String(preferencesStore.get('theme')),
         choices: DOCUMENT_THEMES,
       },
     ],
@@ -109,29 +126,35 @@ const options = ref<{ label: string; options: Option[] }[]>([
   {
     label: 'Sidebar',
     options: [
-      { label: 'Enable Compact Mode', type: 'toggle', key: 'compactMode', value: Boolean(preferencesStore.get('compactMode')) },
-      { label: 'View dock', type: 'toggle', key: 'view_dock', value: Boolean(preferencesStore.get('view_dock')) },
-      { label: 'Normalize file icons', type: 'toggle', key: 'normalizeFileIcons', value: Boolean(preferencesStore.get('normalizeFileIcons')) },
+      {
+        label: 'Enable Compact Mode',
+        description: 'Reduce the size of the sidebar items to show more content on the screen.',
+        type: 'toggle',
+        key: 'compactMode',
+      },
+      {
+        label: 'View dock',
+        description: 'Show the dock on the right side of the sidebar to access to the different apps quickly.',
+        type: 'toggle',
+        key: 'view_dock',
+      },
+      {
+        label: 'Normalize file icons',
+        description: 'Display file parents with the same icon as classic files (not in green)',
+        type: 'toggle',
+        key: 'normalizeFileIcons',
+      },
       {
         label: 'Display uncategorized ressources',
+        description: 'Show resources (uploads from CDN) that are not categorized at the top of the sidebar.',
         type: 'toggle',
         key: 'displayUncategorizedRessources',
-        value: Boolean(preferencesStore.get('displayUncategorizedRessources')),
       },
-      { label: 'Hide ressources', type: 'toggle', key: 'hideSidebarRessources', value: Boolean(preferencesStore.get('hideSidebarRessources')) },
+      { label: 'Hide ressources', type: 'toggle', key: 'hideSidebarRessources' },
       {
         label: 'Show items in Sidebar',
         type: 'groupCheckbox',
         key: 'sidebarItems',
-        value: {
-          manageCategories: true,
-          cdn: true,
-          settings: true,
-          home: true,
-          importation: false,
-          documents: true,
-          newPage: false,
-        },
         items: {
           manageCategories: 'Manage Categories',
           importation: 'Importation',
@@ -151,12 +174,6 @@ const options = ref<{ label: string; options: Option[] }[]>([
         label: 'Show items in navbar',
         type: 'groupCheckbox',
         key: 'navbarItems',
-        value: {
-          breadcrumb: true,
-          search: true,
-          theme: true,
-          navigation: true,
-        },
         items: {
           breadcrumb: 'Breadcrumb',
           search: 'Search',
@@ -173,14 +190,12 @@ const options = ref<{ label: string; options: Option[] }[]>([
         label: 'Editor font family',
         type: 'select',
         key: 'editorFontFamily',
-        value: String(preferencesStore.get('editorFontFamily')),
         choices: EDITOR_FONTS,
       },
       {
         label: 'Editor font size',
         type: 'select',
         key: 'editorFontSize',
-        value: Number(preferencesStore.get('editorFontSize')),
         choices: [
           { label: '12', id: 12 },
           { label: '14', id: 14 },
@@ -191,6 +206,25 @@ const options = ref<{ label: string; options: Option[] }[]>([
           { label: '24', id: 24 },
         ],
       },
+      {
+        label: 'Enable Spell Check',
+        description: 'Enable spell check of browser in the editor. Changes may require a page reload to take effect.',
+        type: 'toggle',
+        key: 'editorSpellCheck',
+      },
+      {
+        label: 'Display statistics bar',
+        description: 'Show a small statistics bar at the top of the editor with word count, characters, and lines.',
+        type: 'toggle',
+        key: 'editorDisplayStats',
+      },
+      {
+        label: 'Enable Snippets',
+        tag: 'New',
+        description: 'Enable or disable editor snippets functionality.',
+        type: 'toggle',
+        key: 'editorSnippetsEnabled',
+      },
     ],
   },
   {
@@ -200,7 +234,6 @@ const options = ref<{ label: string; options: Option[] }[]>([
         label: 'Default datatable items count',
         type: 'select',
         key: 'datatableItemsCount',
-        value: Number(preferencesStore.get('datatableItemsCount')),
         choices: [
           { label: '10', id: 10 },
           { label: '30', id: 30 },
@@ -216,13 +249,13 @@ const options = ref<{ label: string; options: Option[] }[]>([
     options: [
       {
         label: 'Developer Mode',
+        description: 'Enable additional debugging features and options like "Copy ID" in context menus.',
         type: 'toggle',
         key: 'developerMode',
-        value: Boolean(preferencesStore.get('developerMode')),
       },
     ],
   },
-]);
+];
 </script>
 
 <style scoped lang="scss">
@@ -240,12 +273,19 @@ const options = ref<{ label: string; options: Option[] }[]>([
   width: 100%;
   gap: 1rem;
   justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 1rem;
 }
 
 label {
   font-weight: 400;
   flex: 1;
+}
+
+.description {
+  margin-top: 0.25rem;
+  color: var(--font-color-light);
+  font-size: 0.9rem;
 }
 
 h3 {

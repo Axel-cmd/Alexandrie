@@ -1,46 +1,50 @@
 <!-- eslint-disable vue/no-v-html -->
 <template>
-  <div style="height: 100%">
+  <div class="editor-wrapper">
     <div class="editor-container">
-      <Toolbar v-model="document" :minimal="minimal" @execute-action="exec" />
-      <div style="display: flex; min-height: 0; padding: 6px; flex: 1; flex-direction: column; gap: 8px">
-        <input v-if="!minimal" v-model="document.name" placeholder="Title" class="title" @input="autoSaveConditional" />
-        <input v-if="!minimal" v-model="document.description" placeholder="Description" class="description" @input="autoSaveConditional" />
-        <AppTagInput v-model="document.tags" style="margin-bottom: 10px" @update:model-value="autoSaveConditional" />
-        <div ref="container" class="markdown">
-          <div ref="editorContainer" class="codemirror-editor" style="border-right: 1px solid var(--border-color)" />
-          <!-- eslint-disable-next-line vue/no-v-html -->
-          <div
-            v-if="showPreview"
-            ref="markdownPreview"
-            :class="['markdown-preview', `${usePreferences().get('theme').value}-theme`]"
-            style="position: relative"
-            v-html="document.content_compiled"
-          />
+      <!-- Toolbar Section -->
+      <Toolbar v-model="document" :minimal="minimal" @execute-action="commands.exec" />
+
+      <!-- Compact Document Metadata -->
+      <div v-if="!minimal" class="document-meta">
+        <input v-model="document.name" placeholder="Document title" class="meta-title" @input="autoSaveConditional" />
+        <input v-model="document.description" placeholder="Description" class="meta-description" @input="autoSaveConditional" />
+        <AppTagInput v-model="document.tags" class="meta-tags" @update:model-value="autoSaveConditional" />
+      </div>
+      <AppTagInput v-else v-model="document.tags" style="margin: 4px 0" @update:model-value="autoSaveConditional" />
+
+      <!-- Editor Content Section -->
+      <div ref="container" class="editor-content">
+        <div class="editor-panel" :class="{ 'with-preview': showPreview }">
+          <div ref="editorContainer" class="codemirror-editor" />
+        </div>
+
+        <div v-if="showPreview" class="preview-panel">
+          <div class="panel-header">
+            <span class="panel-label">Preview</span>
+          </div>
+          <div ref="markdownPreview" :class="['markdown-preview', `${preferences.get('theme').value}-theme`]" v-html="document.content_compiled" />
         </div>
       </div>
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
-import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, type KeyBinding } from '@codemirror/view';
-import { EditorState, Compartment } from '@codemirror/state';
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
-import { autocompletion } from '@codemirror/autocomplete';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { EditorView } from '@codemirror/view';
 import { loadTheme } from './themes';
+import { createEditorState } from './modules/editorState';
+import { createKeymaps } from './modules/editorKeymaps';
+import { createUploadsHandlers } from './modules/editorUploads';
+import { createSnippetSource } from './modules/editorUtils';
+import { createCommands } from './modules/editorCommands';
 import Toolbar from './Toolbar.vue';
-import ImageSelectorModal from './ImageSelectorModal.vue';
-import GridOrganizationModal from './GridOrganizationModal.vue';
-import ColorPickerModal from './ColorPickerModal.vue';
 
 import compile from '~/helpers/markdown';
 import type { Node } from '~/stores';
-import { useModal, Modal } from '~/composables/ModalBus';
 
 const resourcesStore = useRessourcesStore();
-const preferencesStore = usePreferences();
+const preferences = usePreferences();
 
 const props = defineProps<{ doc?: Partial<Node>; minimal?: boolean }>();
 const emit = defineEmits(['save', 'exit', 'autoSave']);
@@ -56,297 +60,29 @@ const document = ref<Partial<Node>>({
   content_compiled: compile(props.doc?.content || ''),
 });
 
-function exec(action: string, payload?: string) {
-  if (action === 'preview') return (showPreview.value = !showPreview.value);
-  if (action === 'openColorPicker') return openColorModal();
-  if (action === 'save') return save();
-  if (action === 'goto') if (document.value.id) return useRouter().push(`/dashboard/docs/${document.value.id}`);
-  if (action === 'image') return openImageSelector();
-  if (action === 'gridOrganization') return openGridOrganization();
-  if (action === 'insertText') return insertText(payload || '');
-
-  if (!editorView.value) return;
-
-  const view = editorView.value;
-  const state = view.state;
-
-  const { from, to } = state.selection.main;
-  const selectedText = state.sliceDoc(from, to);
-
-  let changes;
-  let select_from = from + 2;
-  let select_to = to + 2;
-
-  switch (action) {
-    case 'bold':
-      changes = { from, to, insert: `**${selectedText}**` };
-      break;
-    case 'italic':
-      changes = { from, to, insert: `*${selectedText}*` };
-      select_from = from + 1;
-      select_to = select_from + selectedText.length;
-      break;
-    case 'underline':
-      changes = { from, to, insert: `__${selectedText}__` };
-      break;
-    case 'strike':
-      changes = { from, to, insert: `~~${selectedText}~~` };
-      break;
-    case 'link':
-      changes = { from, to, insert: `[](${selectedText})` };
-      select_from = from + 3;
-      select_to = select_from;
-      break;
-    case 'code':
-      changes = { from, to, insert: `\`${selectedText}\`` };
-      break;
-    case 'quote':
-      changes = { from, to, insert: `> ${selectedText}\n` };
-      break;
-    case 'list':
-      changes = { from, to, insert: `- ${selectedText}\n` };
-      break;
-    case 'orderedList':
-      changes = { from, to, insert: `1. ${selectedText}\n` };
-      break;
-    case 'color': {
-      const color = String(payload || '').trim();
-      if (!color) return;
-      const insert = `{color:${color}}(${selectedText})`;
-      changes = { from, to, insert };
-      select_from = insert.indexOf('(') + 1 + from;
-      select_to = select_from + selectedText.length;
-      break;
-    }
-  }
-
-  view.dispatch({
-    changes,
-    selection: { anchor: select_from, head: select_to },
-  });
-
-  view.focus();
-}
-function insertText(text: string) {
-  if (!editorView.value || !text) return;
-
-  const view = editorView.value;
-  const state = view.state;
-  const { from, to } = state.selection.main;
-
-  view.dispatch({
-    changes: { from, to, insert: text },
-    selection: { anchor: from + text.length, head: from + text.length },
-  });
-
-  view.focus();
-}
-function openColorModal() {
-  const modalManager = useModal();
-  modalManager.add(new Modal(shallowRef(ColorPickerModal), { props: { onColorSelect: handleColorSelect } }));
-}
-
-function handleColorSelect(color: string) {
-  exec('color', color);
-}
-
-function openImageSelector() {
-  const modalManager = useModal();
-  modalManager.add(new Modal(shallowRef(ImageSelectorModal), { props: { onImageSelect: handleImageSelect }, size: 'large' }));
-}
-
-function openGridOrganization() {
-  const modalManager = useModal();
-  modalManager.add(new Modal(shallowRef(GridOrganizationModal), { props: { onGridSelect: handleGridSelect } }));
-}
-
-function handleImageSelect(imageUrl: string, altText: string) {
-  if (!editorView.value) return;
-
-  const view = editorView.value;
-  const state = view.state;
-  const { from, to } = state.selection.main;
-  const selectedText = state.sliceDoc(from, to);
-
-  const alt = selectedText || altText;
-  const insert = `![${alt}](${imageUrl})`;
-
-  view.dispatch({
-    changes: { from, to, insert },
-    selection: { anchor: from + insert.length, head: from + insert.length },
-  });
-
-  view.focus();
-}
-
-function handleGridSelect(gridMarkdown: string) {
-  if (!editorView.value) return;
-
-  const view = editorView.value;
-  const state = view.state;
-  const { from, to } = state.selection.main;
-
-  view.dispatch({
-    changes: { from, to, insert: gridMarkdown },
-    selection: { anchor: from + gridMarkdown.length, head: from + gridMarkdown.length },
-  });
-
-  view.focus();
-}
-const snippets = usePreferences().get('snippets');
-const snippetListener = EditorView.updateListener.of(update => {
-  if (!update.docChanged || !editorView.value) return;
-
-  const { state, transactions } = update;
-  const lastTransaction = transactions[0];
-
-  const changes = lastTransaction!.changes;
-
-  // Ne gère que les insertions simples
-  let hasInsertion = false;
-  changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
-    if (inserted.length > 0) {
-      hasInsertion = true;
-    }
-  });
-  if (!hasInsertion) return;
-
-  // Check if snippet work
-  const cursorPos = state.selection.main.head;
-  const line = state.doc.lineAt(cursorPos);
-  const textBefore = line.text.slice(0, cursorPos - line.from);
-
-  const match = snippets.value.find(snippet => snippet.id && textBefore.endsWith(snippet.id as string));
-  if (!match) return;
-
-  const start = cursorPos - (match.id as string).length;
-  const snippet = match.label;
-
-  // replace $0 with a cursor
-  const [before, after] = snippet.split('$0');
-  const newText = (before || '') + (after || '');
-
-  const view = editorView.value;
-  view.dispatch({
-    changes: { from: start, to: cursorPos, insert: newText },
-    selection: {
-      anchor: start + (before?.length || 0),
-    },
-  });
+const commands = createCommands({
+  getView: () => editorView.value as EditorView | null,
+  getDoc: () => document.value as Node,
+  setDoc: d => (document.value = d),
+  showPreview,
+  save: () => save(),
 });
 
-const fileUploadHandler = EditorView.domEventHandlers({
-  paste: event => {
-    // Handle file upload and format as Markdown (e.g., ![filename](url))
-    const items = event.clipboardData?.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.kind === 'file') {
-        const file = item.getAsFile();
-        if (!file) return;
-        const body = new FormData();
-        body.append('file', file);
-        resourcesStore.post(body).then((result: Node) => {
-          const url = `${CDN}/${(result as Node).user_id}/${(result as Node).content_compiled}`;
-          exec('insertText', `![${file.name}](${url})\n`);
-        });
-      }
-    }
-  },
-  drop: event => {
-    const items = event.dataTransfer?.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.kind === 'file') {
-        const file = item.getAsFile();
-        if (!file) return;
-        const body = new FormData();
-        body.append('file', file);
-        resourcesStore.post(body).then((result: Node) => {
-          const url = `${CDN}/${(result as Node).user_id}/${(result as Node).content_compiled}`;
-          exec('insertText', `![${file.name}](${url})\n`);
-        });
-      }
-    }
-  },
-});
+const uploadsHandlers = createUploadsHandlers({ resourcesStore, CDN, insertText: (t: string) => commands.exec('insertText', t) });
 
-const markdownKeysmap: readonly KeyBinding[] = [
-  {
-    key: 'Mod-b',
-    run: () => {
-      exec('bold');
-      return true;
-    },
-  },
-  {
-    key: 'Mod-i',
-    run: () => {
-      exec('italic');
-      return true;
-    },
-  },
-  {
-    key: 'Mod-u',
-    run: () => {
-      exec('underline');
-      return true;
-    },
-  },
-  {
-    key: 'Mod-e',
-    run: () => {
-      exec('image');
-      return true;
-    },
-  },
-  {
-    key: 'Mod-l',
-    run: () => {
-      exec('link');
-      return true;
-    },
-  },
-];
-
-const themeCompartment = new Compartment();
-
-watch(
-  preferencesStore.all,
-  () => {
-    if (!editorView.value) return;
-    editorView.value.dispatch({
-      effects: themeCompartment.reconfigure(loadTheme()),
-    });
-  },
-  { deep: true },
-);
-
-const updateListener = EditorView.updateListener.of(v => {
-  if (v.docChanged) {
+const state = createEditorState({
+  initialDoc: document.value.content || '',
+  preferences,
+  themeExtension: loadTheme(),
+  keymaps: createKeymaps(commands),
+  snippetSource: createSnippetSource(preferences),
+  onDocChanged: () => {
     updateDocumentContent();
     autoSaveConditional();
-  }
+  },
+  uploadsHandlers,
 });
-const state = EditorState.create({
-  doc: document.value.content || '',
-  extensions: [
-    lineNumbers(),
-    highlightSpecialChars(),
-    history(),
-    drawSelection(),
-    autocompletion(),
-    keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab, ...markdownKeysmap]),
-    markdown({ base: markdownLanguage }),
-    updateListener,
-    snippetListener,
-    fileUploadHandler,
-    themeCompartment.of(loadTheme()),
-    highlightSelectionMatches({}),
-    EditorView.lineWrapping,
-    EditorState.allowMultipleSelections.of(true),
-  ],
-});
+
 onMounted(() => {
   if (!editorContainer.value) return;
   editorView.value = new EditorView({
@@ -358,7 +94,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  if (preferencesStore.get('documentAutoSave').value) {
+  if (preferences.get('documentAutoSave').value) {
     updateDocumentContent();
     emit('autoSave', document.value);
   }
@@ -376,7 +112,6 @@ function handleGlobalKeys(e: KeyboardEvent) {
     e.preventDefault();
     showPreview.value = !showPreview.value;
   }
-
   if (e.key === 'Escape') {
     emit('exit');
   }
@@ -389,7 +124,7 @@ function syncScroll() {
 }
 
 function autoSaveConditional() {
-  if (preferencesStore.get('documentAutoSave').value) {
+  if (preferences.get('documentAutoSave').value) {
     autoSave();
   }
 }
@@ -412,13 +147,9 @@ const autoSave = debounceDelayed(() => {
 </script>
 
 <style scoped lang="scss">
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
-
-.markdown {
-  display: flex;
-  min-height: 0; /* permet aux enfants flexibles de ne pas déborder */
-  flex: 1;
-  gap: 8px;
+.editor-wrapper {
+  height: 100%;
+  padding: 0;
 }
 
 .editor-container {
@@ -426,6 +157,113 @@ const autoSave = debounceDelayed(() => {
   width: 100%;
   height: 100%;
   flex-direction: column;
+  gap: 8px;
+}
+
+// Compact Document Metadata - Single line
+.document-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.meta-title {
+  flex: 0 1 auto;
+  min-width: 120px;
+  max-width: 280px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--font-color-dark);
+  outline: none;
+  transition: background 0.15s ease;
+
+  &:hover,
+  &:focus {
+    background: var(--bg-ui);
+  }
+
+  &::placeholder {
+    color: var(--font-color-light);
+    font-weight: 500;
+  }
+}
+
+.meta-description {
+  flex: 1 1 150px;
+  min-width: 100px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 0.85rem;
+  color: var(--font-color);
+  outline: none;
+  transition: background 0.15s ease;
+
+  &:hover,
+  &:focus {
+    background: var(--bg-ui);
+  }
+
+  &::placeholder {
+    color: var(--font-color-light);
+    opacity: 0.7;
+  }
+}
+
+.meta-tags {
+  flex: 0 1 auto;
+  min-width: 150px;
+}
+
+// Editor Content Section
+.editor-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 8px;
+}
+
+.editor-panel,
+.preview-panel {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.editor-panel.with-preview {
+  max-width: 50%;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--bg-ui);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.panel-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--font-color-light);
 }
 
 .codemirror-editor {
@@ -436,33 +274,62 @@ const autoSave = debounceDelayed(() => {
 .editor-container:deep(.cm-editor) {
   height: 100%;
 }
-/* stylelint-disable */
+
 .editor-container:deep(.cm-selectionBackground) {
   background-color: var(--selection-color) !important;
 }
 
+.editor-container:deep(.cm-scroller) {
+  padding: 8px 12px;
+}
+
+.editor-container:deep(.cm-content) {
+  font-family: 'JetBrains Mono', monospace;
+}
+
 .markdown-preview {
-  height: 100%;
-  padding: 1rem;
-  background: var(--bg-color);
   flex: 1;
+  padding: 12px 16px;
+  background: var(--bg-color);
   overflow: auto;
 }
 
-input {
-  border: none;
-  outline: none;
+// Responsive
+@media (max-width: 900px) {
+  .editor-content {
+    flex-direction: column;
+  }
+
+  .editor-panel.with-preview {
+    max-width: 100%;
+    max-height: 50%;
+  }
+
+  .meta-description {
+    flex: 0;
+  }
+
+  .preview-panel {
+    max-height: 50%;
+  }
 }
 
-.title {
-  padding: 6px 10px;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
+@media (max-width: 600px) {
+  .document-meta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 8px 10px;
+  }
 
-.description {
-  padding: 4px 10px;
-  font-size: 1.1rem;
-  font-weight: 500;
+  .meta-title,
+  .meta-description {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .meta-tags {
+    width: 100%;
+  }
 }
 </style>

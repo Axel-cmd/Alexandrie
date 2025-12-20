@@ -4,7 +4,6 @@
       :items="flattenedItems"
       :selected-index="selectedIndex"
       :query="searchQuery"
-      empty-icon="search"
       @update-selected-index="$emit('updateSelectedIndex', $event)"
     />
   </div>
@@ -41,7 +40,7 @@ const filteredActions = computed(() => filterByTokens(quickActions, a => `${a.ti
 
 const filteredDocuments = computed<SearchResult[]>(() =>
   documentStore
-    .search({ query: props.searchQuery })
+    .search({ query: props.searchQuery, role: 3 })
     .slice(0, 5)
     .map(d => ({
       id: d.id,

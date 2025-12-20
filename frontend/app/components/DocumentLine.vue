@@ -1,5 +1,5 @@
 <template>
-  <div class="document-line">
+  <div class="document-line" @contextmenu.prevent="showContextMenu">
     <header style="display: flex; justify-content: space-between">
       <div style="display: flex; align-items: center; justify-content: flex-start">
         <Icon
@@ -9,7 +9,7 @@
         />
         <NuxtLink :to="`/dashboard/docs/${document.id}`" class="document-title">{{ document.name }}</NuxtLink>
       </div>
-      <DocumentDotMenu :document="document" :user="user" @delete="deleteDoc" />
+      <NodeDotMenu :node="document" :user="user" @delete="deleteDoc" />
     </header>
     <div v-if="document.tags" class="tags">
       <tag v-for="tag in document.tags?.split(', ')" :key="tag" class="primary">{{ tag }}</tag>
@@ -29,23 +29,50 @@
 <script setup lang="ts">
 import type { Node } from '~/stores';
 import DeleteDocumentModal from '~/components/Node/DeleteNodeModal.vue';
+import NodeContextMenu from '~/components/Node/NodeContextMenu.vue';
 
 const props = defineProps<{ document: Node }>();
 const categoriesStore = useNodesStore();
 const category = computed(() => categoriesStore.getById(props.document.parent_id || ''));
 useUserStore().fetchPublicUser(props.document.user_id);
 const user = computed(() => useUserStore().getById(props.document.user_id || ''));
-const deleteDoc = () => useModal().add(new Modal(shallowRef(DeleteDocumentModal), { props: { documentId: props.document.id } }));
+const deleteDoc = () => useModal().add(new Modal(shallowRef(DeleteDocumentModal), { props: { node: props.document } }));
+
+function showContextMenu(event: MouseEvent) {
+  if (props.document.role === -1) return; // Prevent context menu on nav items
+  useContextMenu().open(shallowRef(NodeContextMenu), event, {
+    props: { node: props.document as Node, contextMenu: true },
+  });
+}
 </script>
 
 <style scoped lang="scss">
 .document-line {
   display: flex;
-  padding: 12px;
-  border-left: 1px solid var(--border-color);
-  border-right: 1px solid var(--border-color);
-  border-top: 1px solid var(--border-color);
+  padding: 14px 16px;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-bottom: none;
   flex-direction: column;
+  transition: background 0.15s ease;
+
+  &:first-child {
+    border-radius: 10px 10px 0 0;
+  }
+
+  &:last-child {
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 0 0 10px 10px;
+  }
+
+  &:only-child {
+    border-radius: 10px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  &:hover {
+    background: var(--bg-contrast);
+  }
 }
 
 header {
@@ -54,36 +81,52 @@ header {
 
 .category-icon {
   padding: 6px;
-  border-radius: 6px;
-  margin-right: 5px;
+  border-radius: 8px;
+  margin-right: 8px;
 }
 
 .document-title {
-  font-size: 18px;
-  font-weight: bold;
-  margin-right: 5px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--font-color-dark);
   text-decoration: none;
+  transition: color 0.15s;
+
+  &:hover {
+    color: var(--primary);
+  }
 }
 
 .description {
-  height: 100%;
   margin: 0;
-  padding: 4px 0;
-  font-size: 16px;
+  padding: 6px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--font-color-light);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 footer {
   display: flex;
-  font-size: 14px;
+  font-size: 12px;
+  color: var(--font-color-light);
   align-items: center;
-  justify-content: flex-start;
-  margin-top: 8px;
+  gap: 6px;
+  margin-top: 4px;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    opacity: 0.6;
+  }
 }
 
 .tags {
   display: flex;
   flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
 }
 </style>
