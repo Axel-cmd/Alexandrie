@@ -112,7 +112,7 @@ watchEffect(() => {
   a {
     padding: 4px 8px;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
     color: var(--font-color);
     text-decoration: none;
